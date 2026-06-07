@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>寫信</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- 楷體：jsDelivr 上的 lxgw-wenkai-tc-webfont（按 unicode-range 分檔載入，只抓需要的字） -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-tc-webfont@1.2.0/lxgwwenkaitc-regular.css">
+  <!-- 楷體備援：Google Fonts；若上面那條沒過，這條補上 -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400&display=swap">
+  <!-- 宋體：Google Fonts -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&display=swap">
+  <style>
+    :root {
+      --paper:        #F4EFE4;
+      --paper-rgb:    244, 239, 228;
+      --paper-deep:   #ECE5D4;
+      --ink:          #23201B;
+      --ink-soft:     #6B655A;
+      --ink-faint:    #A39A8C;
+      --accent:       #9A4A3B;
+      --hairline:     rgba(154, 74, 59, 0.30);
+      --grid-line:    rgba(154, 74, 59, 0.09);
+
+      --font-kai:  "LXGW WenKai TC", "標楷體", "DFKai-SB", "BiauKai", "TW-Kai", "Kaiti TC", "Kaiti SC", "Kaiti", serif;
+      --font-song: "Noto Serif TC", "Songti TC", "STSong", "PMingLiU", "MingLiU", serif;
+
+      --s-1:  8px;
+      --s-2: 16px;
+      --s-3: 24px;
+      --s-4: 40px;
+      --s-5: 64px;
+      --s-6: 96px;
+
+      --col: min(560px, 92vw);
+      --letter-w: min(960px, 94vw);
+      --picker-max: min(1200px, 96vw);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--paper); }
+    body {
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: var(--font-song);
+      font-size: 17px;
+      line-height: 1.9;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    .view { display: none; }
+    .view.is-active { display: block; }
+
+    /* ---------- 選紙頁 ---------- */
+    .view-picker {
+      min-height: 100vh;
+      padding: var(--s-4) 2vw var(--s-5);
+      text-align: center;
+    }
+
+    .site-mark {
+      font-family: var(--font-kai);
+      font-size: 26px;
+      font-weight: 400;
+      letter-spacing: 0.6em;
+      text-indent: 0.6em; /* 抵消最後一個字後面的多餘間距，讓視覺真正居中 */
+      color: var(--ink-soft);
+      margin: 0 0 var(--s-4);
+      user-select: none;
+    }
+
+    .catalog {
+      width: var(--picker-max);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      column-gap: var(--s-4);
+      row-gap: var(--s-4);
+      justify-items: center;
+      align-items: start;
+    }
+
+    .category {
+      width: 100%;
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--s-2);
+    }
+
+    .category-head {
+      display: inline-flex;
+      align-items: baseline;
+      gap: var(--s-2);
+    }
+
+    .category-name {
+      font-family: var(--font-kai);
+      font-size: 18px;
+      font-weight: 400;
+      color: var(--ink);
+      letter-spacing: 0.35em;
+      text-indent: 0.35em;
+      margin: 0;
+    }
+
+    .category-count {
+      font-family: var(--font-kai);
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      color: var(--ink-faint);
+    }
+
+    /* 扇形卡片區 */
+    .fan {
+      position: relative;
+      width: 100%;
+      height: 210px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .fan-card {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 120px;
+      aspect-ratio: 5 / 7;
+      background: var(--paper-deep) center/cover no-repeat;
+      border: none;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      outline: none;
+      transform-origin: 50% 95%;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+      transition:
+        transform 520ms cubic-bezier(.22,.61,.36,1),
+        box-shadow 320ms ease-out,
+        z-index 0s;
+    }
+
+    /* 預設：輕度扇形（疊在一起） */
+    .fan-card {
+      --offset: calc(var(--i) - (var(--n) - 1) / 2);
+      --rot: calc(var(--offset) * 4deg);
+      --tx:  calc(var(--offset) * 22px);
+      transform: translate(calc(-50% + var(--tx)), -50%) rotate(var(--rot));
+      z-index: var(--i);
+    }
+
+    /* hover 整把扇開 */
+    .fan:hover .fan-card,
+    .fan:focus-within .fan-card {
+      --rot: calc(var(--offset) * 8deg);
+      --tx:  calc(var(--offset) * 52px);
+      transform: translate(calc(-50% + var(--tx)), -50%) rotate(var(--rot));
+    }
+
+    /* 單張卡 hover：提到最上、無角度、輕微上浮 */
+    .fan-card:hover,
+    .fan-card:focus-visible {
+      z-index: 99;
+      transform: translate(calc(-50% + var(--tx)), calc(-50% - 16px)) rotate(0deg);
+      box-shadow: 0 18px 32px rgba(40,28,16,0.18), 0 4px 10px rgba(40,28,16,0.10);
+    }
+
+    .fan-card:focus-visible::after {
+      content: "";
+      position: absolute;
+      inset: -3px;
+      border: 1px solid var(--accent);
+      pointer-events: none;
+    }
+
+    /* ---------- 寫信頁 ---------- */
+    /* 寫信頁的設計變數：
+       --line-step / --letter-fs：字距與字級（toolbar 字級切換時改）
+       --paper-veil：紙圖上方蓋一層 paper 色的透明度（toolbar 紙濃淡切換時改；0=最濃、越大越淡）
+       --paper-h / --paper-w：一張紙的尺寸，paper-h 由原圖比例 + 視窗約束算出後 round 到字距整數倍，
+         讓字行邊永遠對齊紙頁邊、字不會壓在分頁線上。 */
+    .view-writer {
+      --line-step: 36px;
+      --letter-fs: 18px;
+      --paper-veil: 0.18;
+      --paper-h-raw: min(calc(var(--letter-w) / var(--paper-ratio, 0.71)), 88vh);
+      --paper-h: round(down, var(--paper-h-raw), var(--line-step));
+      --paper-w-raw: calc(var(--paper-h) * var(--paper-ratio, 0.71));
+      --paper-w: round(down, var(--paper-w-raw), var(--line-step));
+    }
+    .view-writer[data-size="small"] { --line-step: 32px; --letter-fs: 16px; }
+    .view-writer[data-size="mid"]   { --line-step: 36px; --letter-fs: 18px; }
+    .view-writer[data-size="large"] { --line-step: 42px; --letter-fs: 21px; }
+    .view-writer[data-paper="dim"]  { --paper-veil: 0.45; }
+    .view-writer[data-paper="mid"]  { --paper-veil: 0.18; }
+    .view-writer[data-paper="rich"] { --paper-veil: 0; }
+    /* display 只在 is-active 才生效，避免首頁也渲染寫信頁元素 */
+    .view-writer.is-active {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--s-3);
+      padding: var(--s-4) var(--s-3) var(--s-5);
+    }
+
+    /* 工具列：直書／橫書、紙濃淡、字級、換紙 一行排開。
+       不固定寬度（letter 在直書多頁時會超寬，toolbar 永遠居中於視窗）。 */
+    .writer-toolbar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      column-gap: var(--s-3);
+      row-gap: var(--s-2);
+      font-family: var(--font-kai);
+      font-size: 15px;
+      letter-spacing: 0.35em;
+      color: var(--ink-soft);
+      user-select: none;
+      max-width: 100%;
+    }
+    .tool-group {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-2);
+    }
+    .tool-label {
+      font-size: 13px;
+      letter-spacing: 0.3em;
+      color: var(--ink-faint);
+    }
+
+    .mode-toggle,
+    .opt-toggle,
+    .paper-swap {
+      background: none;
+      border: 0;
+      padding: 4px 0;
+      font: inherit;
+      letter-spacing: inherit;
+      color: inherit;
+      cursor: pointer;
+      position: relative;
+      transition: color 240ms ease;
+    }
+    .opt-toggle {
+      letter-spacing: normal;
+      padding: 4px 4px;
+      font-size: 14px;
+    }
+    .mode-toggle:hover,
+    .opt-toggle:hover,
+    .paper-swap:hover { color: var(--ink); }
+    .mode-toggle.is-active,
+    .opt-toggle.is-active { color: var(--ink); }
+    .mode-toggle.is-active::after,
+    .opt-toggle.is-active::after {
+      content: "";
+      position: absolute;
+      left: 0; right: 0; bottom: -6px;
+      height: 1px;
+      background: var(--accent);
+    }
+    .mode-sep { color: var(--ink-faint); }
+
+    /* letter 外的捲動容器：直書時 letter 寬度可超過 viewport，靠水平 scroll 看完整。
+       letter 寬 ≤ viewport 時居中；letter 寬 > viewport 時可水平拖動。 */
+    .letter-wrap {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      overflow-x: auto;
+    }
+
+    /* 紙：寫信時的容器。
+       letter 自身不畫紙圖。紙圖由 .paper-stack 內的多張 .paper-tile div 鋪：
+       每張 div 是一張完整箋紙、偶數 index 加 .flipped 上下／左右翻轉，
+       相鄰兩張接縫處顏色完全銜接（消除 PNG 自身上下色階差造成的接縫色差）。
+       veil 由 letter::after 覆蓋整個 letter，控制紙的濃淡。 */
+    .letter {
+      position: relative;
+      background-color: var(--paper);
+      box-shadow:
+        0 22px 50px rgba(40,28,16,0.12),
+        0 6px 14px rgba(40,28,16,0.06);
+      /* 展紙：clip-path 從中軸線往左右開展，併著淡入。陰影靠 will-change 提示 GPU 合成。 */
+      animation: letterUnfurl 740ms cubic-bezier(.22,.61,.36,1) both;
+      overflow: hidden;
+      will-change: clip-path, opacity;
+    }
+    .letter::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-color: rgba(var(--paper-rgb), var(--paper-veil));
+      z-index: 1;
+      pointer-events: none;
+    }
+    .letter[data-mode="horizontal"] {
+      width: var(--paper-w);
+      min-height: var(--paper-h);
+    }
+    .letter[data-mode="vertical"] {
+      height: var(--paper-h);
+      min-width: var(--paper-w);
+    }
+    .paper-stack {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .paper-tile {
+      position: absolute;
+      background-image: var(--paper-url, none);
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+      background-position: 0 0;
+    }
+    .letter[data-mode="horizontal"] .paper-tile.flipped { transform: scaleY(-1); }
+    .letter[data-mode="vertical"]   .paper-tile.flipped { transform: scaleX(-1); }
+    @keyframes letterUnfurl {
+      from { clip-path: inset(0 50% 0 50%); opacity: 0.35; }
+      to   { clip-path: inset(0 0 0 0);     opacity: 1; }
+    }
+    @keyframes contentInkSettle {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* 信件文字：normal flow（不再 absolute）讓 letter 隨字長自動延伸。
+       楷體預設（LXGW 文楷）；font-size 跟字級切換 var(--letter-fs) 同步；行高永遠 2em = 字距。
+       padding-inline 是「字流兩側」留白（橫書時左右、直書時上下，因 writing-mode 翻轉物理方向）；
+       padding-block 行列延伸方向不留白，紙圖可以完整 tile。 */
+    .letter-content {
+      position: relative;
+      z-index: 2;
+      display: block;
+      font-family: var(--font-kai);
+      font-size: var(--letter-fs, 18px);
+      line-height: 2em;
+      color: var(--ink);
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      outline: none;
+      caret-color: var(--accent);
+      padding-inline: var(--line-step);
+      padding-block: 0;
+      /* 字比紙慢一點點才浮現，視覺上像「紙展開後字才落定」。 */
+      animation: contentInkSettle 520ms ease-out 240ms both;
+    }
+    /* 空白時的極輕提示文字，一打字就消失 */
+    .letter-content:empty::before {
+      content: attr(data-placeholder);
+      color: var(--ink-faint);
+      opacity: 0.7;
+      pointer-events: none;
+      letter-spacing: 0.15em;
+    }
+    /* 橫書：橫格線（每行頂的細線；字寫在格線之間），letter-content 寬度 = letter 寬度，
+       高度隨字行往下延展超過 paper-h 時讓 letter 也跟著延展。 */
+    .letter[data-mode="horizontal"] .letter-content {
+      width: 100%;
+      min-height: var(--paper-h);
+      background-image: repeating-linear-gradient(
+        to bottom,
+        var(--grid-line) 0,
+        var(--grid-line) 1px,
+        transparent 1px,
+        transparent 2em
+      );
+      background-size: 100% 2em;
+      background-position: 0 0;
+    }
+    /* 直書：直格線（每列右邊的細線），letter-content 高度 = letter 高度，
+       寬度隨字列往左延展超過 paper-w 時讓 letter 也跟著加寬。 */
+    .letter[data-mode="vertical"] .letter-content {
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      height: 100%;
+      min-width: var(--paper-w);
+      background-image: repeating-linear-gradient(
+        to left,
+        var(--grid-line) 0,
+        var(--grid-line) 1px,
+        transparent 1px,
+        transparent 2em
+      );
+      background-size: 2em 100%;
+      background-position: 100% 0;
+    }
+
+    /* ---------- 響應式 ---------- */
+    @media (max-width: 900px) {
+      .view-picker { padding: var(--s-3) 3vw var(--s-5); }
+      .site-mark { font-size: 20px; margin-bottom: var(--s-3); letter-spacing: 0.5em; }
+      .catalog { column-gap: var(--s-3); row-gap: var(--s-3); }
+      .category { max-width: 320px; }
+      .category-name { font-size: 16px; letter-spacing: 0.25em; }
+      .fan { height: 170px; }
+      .fan-card { width: 92px; }
+      .fan-card { --tx: calc(var(--offset) * 16px); }
+      .fan:hover .fan-card,
+      .fan:focus-within .fan-card { --tx: calc(var(--offset) * 38px); }
+      /* mobile：字級整體小一檔，line-step / 紙的 round 對齊一起跟著小 */
+      .view-writer[data-size="small"] { --line-step: 28px; --letter-fs: 14px; }
+      .view-writer[data-size="mid"]   { --line-step: 32px; --letter-fs: 16px; }
+      .view-writer[data-size="large"] { --line-step: 36px; --letter-fs: 18px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 選紙頁 -->
+  <main class="view view-picker is-active" id="view-picker" aria-label="選擇箋紙">
+    <h1 class="site-mark">寫信</h1>
+    <section class="catalog" id="catalog"></section>
+  </main>
+
+  <!-- 寫信頁 -->
+  <!-- papers.js 由 掃描箋紙.ps1 自動產生：window.PAPERS = [{slug, items}, ...] -->
+  <script src="assets/papers.js"></script>
+  <main class="view view-writer" id="view-writer" aria-label="寫信" hidden>
+    <nav class="writer-toolbar" aria-label="工具列">
+      <span class="tool-group">
+        <button type="button" class="mode-toggle" data-mode="vertical">直書</button>
+        <span class="mode-sep" aria-hidden="true">｜</span>
+        <button type="button" class="mode-toggle" data-mode="horizontal">橫書</button>
+      </span>
+      <span class="tool-group" aria-label="紙的濃淡">
+        <span class="tool-label" aria-hidden="true">紙</span>
+        <button type="button" class="opt-toggle" data-opt="paper" data-value="dim">淡</button>
+        <button type="button" class="opt-toggle" data-opt="paper" data-value="mid">中</button>
+        <button type="button" class="opt-toggle" data-opt="paper" data-value="rich">濃</button>
+      </span>
+      <span class="tool-group" aria-label="字級">
+        <span class="tool-label" aria-hidden="true">字</span>
+        <button type="button" class="opt-toggle" data-opt="size" data-value="small">小</button>
+        <button type="button" class="opt-toggle" data-opt="size" data-value="mid">中</button>
+        <button type="button" class="opt-toggle" data-opt="size" data-value="large">大</button>
+      </span>
+      <button type="button" class="paper-swap" id="paper-swap">換紙</button>
+    </nav>
+    <div class="letter-wrap" id="letter-wrap">
+      <article class="letter" id="letter" data-mode="vertical">
+        <div class="paper-stack" id="paper-stack" aria-hidden="true"></div>
+        <div class="letter-content"
+             id="letter-content"
+             contenteditable="true"
+             spellcheck="false"
+             role="textbox"
+             aria-multiline="true"
+             aria-label="信件內容"
+             data-placeholder="在此處寫信⋯"></div>
+      </article>
+    </div>
+  </main>
+
+  <script>
+  (function () {
+    'use strict';
+
+    // 箋紙清單由 assets/papers.js 載入（在主 script 之前），形如 window.PAPERS = [{slug, items}, ...]。
+    // slug = 資料夾名（簡體中文，因為磁碟資料夾是簡體）；display 名稱用下方對照表轉成繁體。
+    // 新增資料夾未列入下表時，會以 slug 原樣顯示。
+    const PAPER_DISPLAY = {
+      '华石': '華石', '画诗': '畫詩', '奇石': '奇石', '隐逸': '隱逸', '写生': '寫生',
+      '入林': '入林', '折赠': '折贈', '墨友': '墨友', '如兰': '如蘭', '孺慕': '孺慕',
+      '闺则': '閨則', '敏学': '敏學', '极修': '極修', '尚志': '尚志', '伟度': '偉度',
+      '建义': '建義', '灵瑞': '靈瑞', '香雪': '香雪', '韵叟': '韻叟', '杂稿': '雜稿',
+    };
+    const RAW_PAPERS = Array.isArray(window.PAPERS) ? window.PAPERS : [];
+    const PAPERS = RAW_PAPERS.map(c => ({
+      slug: c.slug,
+      display: PAPER_DISPLAY[c.slug] || c.slug,
+      items: Array.isArray(c.items) ? c.items : [],
+    })).filter(c => c.items.length > 0);
+
+    const THUMB_BASE = 'assets/papers-thumb/';
+    const ORIG_BASE  = 'assets/papers/';
+    const CN_NUM = ['零','一','二','三','四','五','六','七','八','九','十','十一','十二'];
+    const toCn = n => CN_NUM[n] != null ? CN_NUM[n] : String(n);
+
+    const encodeSeg = encodeURIComponent;
+    const thumbURL = (slug, name) => THUMB_BASE + encodeSeg(slug) + '/' + encodeSeg(name) + '.jpg';
+    const origURL  = (slug, name) => ORIG_BASE  + encodeSeg(slug) + '/' + encodeSeg(name) + '.png';
+
+    const viewPicker    = document.getElementById('view-picker');
+    const viewWriter    = document.getElementById('view-writer');
+    const catalog       = document.getElementById('catalog');
+    const letter        = document.getElementById('letter');
+    const letterWrap    = document.getElementById('letter-wrap');
+    const letterContent = document.getElementById('letter-content');
+
+    // ----- 草稿（localStorage）：紙、模式、內容跨重整都保留 -----
+    const STORAGE_KEY = 'letter-site-draft-v1';
+    const DEBOUNCE_MS = 400;
+
+    function debounce(fn, ms) {
+      let t;
+      return function () {
+        clearTimeout(t);
+        t = setTimeout(fn, ms);
+      };
+    }
+
+    function loadDraft() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    }
+
+    function saveDraft(partial) {
+      try {
+        const current = loadDraft() || {};
+        const next = Object.assign({}, current, partial);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch (e) { /* private mode / quota 用盡：靜默 */ }
+    }
+
+    const persistContent = debounce(function () {
+      saveDraft({ content: letterContent.innerText });
+    }, DEBOUNCE_MS);
+
+    // 從 letter 自身的 computed style 取出已求值的 paper-w / paper-h。
+    // 不用 getComputedStyle(viewWriter).getPropertyValue('--paper-w')，因為 CSS round() 在 custom property
+    // 內可能保留為字串，無法 parseFloat。letter 上的 width/height 是已求值的 px。
+    function getPaperDims() {
+      const cs = getComputedStyle(letter);
+      let paperW, paperH;
+      if (letter.dataset.mode === 'vertical') {
+        paperW = parseFloat(cs.minWidth);
+        paperH = parseFloat(cs.height);
+      } else {
+        paperW = parseFloat(cs.width);
+        paperH = parseFloat(cs.minHeight);
+      }
+      return { paperW: isFinite(paperW) ? paperW : 0, paperH: isFinite(paperH) ? paperH : 0 };
+    }
+
+    // 紙堆：依當前 letter 長度算出需要幾張紙，動態建出 .paper-tile，偶數翻轉接平 PNG 自身色差。
+    const paperStack = document.getElementById('paper-stack');
+    function renderPaperStack() {
+      if (!paperStack) return;
+      const { paperW, paperH } = getPaperDims();
+      if (!paperW || !paperH) { paperStack.innerHTML = ''; return; }
+      const isV = letter.dataset.mode === 'vertical';
+      const span = isV ? letter.offsetWidth : letter.offsetHeight;
+      const pageSize = isV ? paperW : paperH;
+      const pageCount = Math.max(1, Math.ceil(span / pageSize));
+      paperStack.innerHTML = '';
+      for (let i = 0; i < pageCount; i++) {
+        const tile = document.createElement('div');
+        tile.className = 'paper-tile' + (i % 2 ? ' flipped' : '');
+        if (isV) {
+          tile.style.top = '0';
+          tile.style.bottom = '0';
+          tile.style.right = (i * paperW) + 'px';
+          tile.style.width = paperW + 'px';
+        } else {
+          tile.style.left = '0';
+          tile.style.right = '0';
+          tile.style.top = (i * paperH) + 'px';
+          tile.style.height = paperH + 'px';
+        }
+        paperStack.appendChild(tile);
+      }
+    }
+
+    // 直書時 letter 寬隨字往左延展。
+    // 預設不動：letter 寬由 CSS min-width: paper-w 決定 = 一頁。
+    // 字流自然寬超過一頁時才強制把 letter 撐到內容寬。
+    function updateLetterWidth() {
+      if (letter.dataset.mode !== 'vertical') {
+        letter.style.width = '';
+        return;
+      }
+      const { paperW } = getPaperDims();
+      if (!paperW) { letter.style.width = ''; return; }
+      const naturalW = Math.max(letterContent.offsetWidth, letterContent.scrollWidth);
+      if (naturalW > paperW + 1) {
+        letter.style.width = naturalW + 'px';
+      } else {
+        letter.style.width = '';
+      }
+    }
+
+    // 讓游標位置始終在視野內：直書時 letter-wrap 水平 scroll、橫書時 window 垂直 scroll。
+    function ensureCaretVisible() {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      if (!letterContent.contains(sel.anchorNode)) return;
+      const range = sel.getRangeAt(0);
+      const rects = range.getClientRects();
+      let rect = rects.length ? rects[0] : range.getBoundingClientRect();
+      if (!rect || (rect.width === 0 && rect.height === 0 && rect.left === 0 && rect.top === 0)) return;
+      const wrapRect = letterWrap.getBoundingClientRect();
+      const pad = 60;
+      if (rect.left < wrapRect.left + pad) {
+        letterWrap.scrollLeft -= (wrapRect.left + pad - rect.left);
+      } else if (rect.right > wrapRect.right - pad) {
+        letterWrap.scrollLeft += (rect.right - wrapRect.right + pad);
+      }
+      if (rect.top < pad) {
+        window.scrollBy(0, rect.top - pad);
+      } else if (rect.bottom > window.innerHeight - pad) {
+        window.scrollBy(0, rect.bottom - window.innerHeight + pad);
+      }
+    }
+
+    // 一個總入口：依序刷新 letter 寬度、紙圖背景，然後 caret 跟蹤或重設 scroll
+    function refreshLetter(trackCaret) {
+      if (!viewWriter.classList.contains('is-active')) return;
+      requestAnimationFrame(function () {
+        updateLetterWidth();
+        renderPaperStack();
+        if (trackCaret) {
+          ensureCaretVisible();
+        } else if (letter.dataset.mode === 'vertical' && letter.offsetWidth > letterWrap.clientWidth) {
+          // 切模式 / 進寫信頁時：直書多頁就 scroll 到最右（看到第一張紙）
+          letterWrap.scrollLeft = letterWrap.scrollWidth - letterWrap.clientWidth;
+        }
+      });
+    }
+    const refreshLetterCaret = debounce(function () { refreshLetter(true); }, 50);
+
+    function renderPicker() {
+      if (PAPERS.length === 0) {
+        catalog.innerHTML =
+          '<p style="font-family:var(--font-kai);color:var(--ink-soft);' +
+          'letter-spacing:0.2em;line-height:2;">' +
+          '找不到箋紙清單。<br>請在資料夾雙擊執行「掃描箋紙.ps1」後重新整理頁面。' +
+          '</p>';
+        return;
+      }
+      const frag = document.createDocumentFragment();
+      for (const cat of PAPERS) {
+        const section = document.createElement('section');
+        section.className = 'category';
+
+        const head = document.createElement('div');
+        head.className = 'category-head';
+        const name = document.createElement('h2');
+        name.className = 'category-name';
+        name.textContent = cat.display;
+        const count = document.createElement('span');
+        count.className = 'category-count';
+        count.textContent = toCn(cat.items.length) + '張';
+        head.appendChild(name);
+        head.appendChild(count);
+        section.appendChild(head);
+
+        const fan = document.createElement('div');
+        fan.className = 'fan';
+        cat.items.forEach((item, i) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'fan-card';
+          btn.style.setProperty('--i', i);
+          btn.style.setProperty('--n', cat.items.length);
+          btn.style.backgroundImage = "url('" + thumbURL(cat.slug, item) + "')";
+          btn.setAttribute('aria-label', cat.display + ' ' + item);
+          btn.addEventListener('click', () => choosePaper(cat.slug, item));
+          fan.appendChild(btn);
+        });
+        section.appendChild(fan);
+        frag.appendChild(section);
+      }
+      catalog.replaceChildren(frag);
+    }
+
+    function choosePaper(slug, name) {
+      const url = origURL(slug, name);
+      // 先用 Image 預載並偵測原圖長寬比，把變數設在 view-writer 上：
+      // 1) paper-w / paper-h 的 calc 需要在 view-writer scope 看到 ratio
+      // 2) letter 透過 cascade 取得 paper-url 當背景
+      const probe = new Image();
+      probe.onload = () => {
+        const ratio = probe.naturalWidth / probe.naturalHeight;
+        viewWriter.style.setProperty('--paper-url', "url('" + url + "')");
+        viewWriter.style.setProperty('--paper-ratio', ratio);
+        saveDraft({ paperSlug: slug, paperItem: name, ratio: ratio });
+        switchView('writer');
+      };
+      probe.onerror = () => {
+        viewWriter.style.setProperty('--paper-url', 'none');
+        saveDraft({ paperSlug: slug, paperItem: name });
+        switchView('writer');
+      };
+      probe.src = url;
+    }
+
+    function switchView(which) {
+      if (which === 'writer') {
+        viewPicker.classList.remove('is-active');
+        viewPicker.hidden = true;
+        viewWriter.classList.add('is-active');
+        viewWriter.hidden = false;
+        // 重觸發展紙與字浮現的動畫（同一節點 CSS animation 預設只播一次，需手動重置）
+        letter.style.animation = 'none';
+        letterContent.style.animation = 'none';
+        void letter.offsetWidth;
+        letter.style.animation = '';
+        letterContent.style.animation = '';
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        refreshLetter(false);
+      } else {
+        viewWriter.classList.remove('is-active');
+        viewWriter.hidden = true;
+        viewPicker.classList.add('is-active');
+        viewPicker.hidden = false;
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      }
+    }
+
+    function setMode(mode) {
+      letter.dataset.mode = mode;
+      viewWriter.dataset.mode = mode;
+      document.querySelectorAll('.mode-toggle').forEach(btn => {
+        btn.classList.toggle('is-active', btn.dataset.mode === mode);
+      });
+      saveDraft({ mode: mode });
+      refreshLetter(false);
+    }
+
+    // 紙濃淡 / 字級切換：opt = 'paper' | 'size'，value = 'dim/mid/rich' | 'small/mid/large'
+    function setOpt(opt, value) {
+      viewWriter.dataset[opt] = value;
+      document.querySelectorAll('.opt-toggle[data-opt="' + opt + '"]').forEach(btn => {
+        btn.classList.toggle('is-active', btn.dataset.value === value);
+      });
+      const partial = {};
+      partial[opt] = value;
+      saveDraft(partial);
+      refreshLetter(false);
+    }
+
+    function restoreFromDraft() {
+      const draft = loadDraft();
+      // 內容先恢復（即使沒選紙，也讓使用者下次有紙時看得到）
+      if (draft && typeof draft.content === 'string') {
+        letterContent.textContent = draft.content;
+      }
+      // 紙濃淡 / 字級：先套上，paper-h 等變數依賴 line-step 才能算準
+      setOpt('paper', (draft && draft.paper) ? draft.paper : 'mid');
+      setOpt('size',  (draft && draft.size)  ? draft.size  : 'mid');
+      setMode((draft && draft.mode) || 'vertical');
+      // 有紙也只是把設定回填好，不自動進寫信頁——每次打開都先看首頁
+      if (draft && draft.paperSlug && draft.paperItem) {
+        const url = origURL(draft.paperSlug, draft.paperItem);
+        viewWriter.style.setProperty('--paper-url', "url('" + url + "')");
+        if (draft.ratio) {
+          viewWriter.style.setProperty('--paper-ratio', draft.ratio);
+        }
+      }
+    }
+
+    document.querySelectorAll('.mode-toggle').forEach(btn => {
+      btn.addEventListener('click', () => setMode(btn.dataset.mode));
+    });
+    document.querySelectorAll('.opt-toggle').forEach(btn => {
+      btn.addEventListener('click', () => setOpt(btn.dataset.opt, btn.dataset.value));
+    });
+    document.getElementById('paper-swap').addEventListener('click', () => switchView('picker'));
+
+    // 視窗縮放：紙的 px 尺寸由 vw / vh 換算，resize 後 CSS 變數會變但紙堆 inline 座標是舊的。
+    // 用 debounce 在 resize 停下後重排，避免縮放途中每一格都重畫。
+    const onResize = debounce(function () { refreshLetter(false); }, 120);
+    window.addEventListener('resize', onResize);
+
+    // 寫信時的輸入事件：
+    // - 中文輸入法（IME）拼字過程中先不存，等 compositionend 再存一次
+    // - 一般 input 走 debounce，避免每打一個字就寫一次 localStorage
+    // - paste 只取純文字，避免別處貼來的字體 / 顏色破壞紙面
+    let isComposing = false;
+    letterContent.addEventListener('compositionstart', () => { isComposing = true; });
+    letterContent.addEventListener('compositionend', () => {
+      isComposing = false;
+      saveDraft({ content: letterContent.innerText });
+      refreshLetter(true);
+    });
+    letterContent.addEventListener('input', () => {
+      if (isComposing) return;
+      persistContent();
+      refreshLetterCaret();
+    });
+    letterContent.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain') || '';
+      document.execCommand('insertText', false, text);
+    });
+
+    // init：先建選紙頁、再嘗試從草稿恢復。每次都先停在選紙頁。
+    renderPicker();
+    restoreFromDraft();
+  })();
+  </script>
+</body>
+</html>
