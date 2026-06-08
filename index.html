@@ -564,10 +564,6 @@
       };
     }
 
-    function imageDecode(img) {
-      return img.decode ? img.decode().catch(() => {}) : Promise.resolve();
-    }
-
     function loadDraft() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
@@ -599,12 +595,10 @@
       img.decoding = 'async';
       const promise = new Promise((resolve) => {
         img.onload = () => {
-          imageDecode(img).then(() => {
-            resolve({
-              ok: true,
-              url: url,
-              ratio: img.naturalWidth / img.naturalHeight,
-            });
+          resolve({
+            ok: true,
+            url: url,
+            ratio: img.naturalWidth / img.naturalHeight,
           });
         };
         img.onerror = () => resolve({ ok: false, url: url });
@@ -772,11 +766,9 @@
           btn.setAttribute('aria-label', cat.display + ' ' + item);
           btn.addEventListener('pointerenter', () => {
             loadThumb(btn);
-            preloadPaper(cat.slug, item);
           });
           btn.addEventListener('focus', () => {
             loadThumb(btn);
-            preloadPaper(cat.slug, item);
           });
           btn.addEventListener('touchstart', () => {
             loadThumb(btn);
@@ -819,7 +811,6 @@
         viewWriter.classList.remove('is-loading');
         viewWriter.removeAttribute('aria-busy');
         if (!result.ok) {
-          viewWriter.style.setProperty('--paper-url', 'none');
           refreshLetter(false);
           return;
         }
@@ -892,7 +883,6 @@
         if (draft.ratio) {
           viewWriter.style.setProperty('--paper-ratio', draft.ratio);
         }
-        preloadPaper(draft.paperSlug, draft.paperItem);
       }
     }
 
